@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { OrderService } from './order.service';
 import { OrderDto, SaveOrderDto } from 'src/dto/entities.dto';
 import { Roles } from 'src/decorators/roles.decorator.ts';
@@ -35,5 +43,11 @@ export class OrderController {
   @Get('/total_amount')
   async getTotalOrderAmount() {
     return this.orderService.orderStatistics();
+  }
+
+  @Roles('admin')
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    return this.orderService.deleteOne(id);
   }
 }

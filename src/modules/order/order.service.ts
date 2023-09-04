@@ -131,4 +131,21 @@ export class OrderService {
     const totalAmount = orders.reduce((acc, order) => acc + order.amount, 0);
     return { totalAmount, total };
   }
+
+  //通过订单流水号删除
+  async deleteOne(id: string) {
+    if (!id) {
+      throw new HttpException('缺少参数id', HttpStatus.BAD_REQUEST);
+    }
+    const res = await this.orderRepository
+      .createQueryBuilder('users')
+      .delete()
+      .from(Order)
+      .where('id = :id', { id })
+      .execute();
+    if (res.affected <= 0) {
+      throw new HttpException('删除失败', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+    return res;
+  }
 }

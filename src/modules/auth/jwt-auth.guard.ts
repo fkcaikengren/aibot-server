@@ -23,7 +23,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       NOT_CHECK_TOKEN_FLAG,
       ctx.getHandler(),
     );
-    console.log('pass: ' + pass);
+    // console.log('pass: ' + pass);
     if (pass) return true;
 
     return super.canActivate(ctx);
