@@ -107,7 +107,7 @@ export class OrderService {
         ...(!!status && { status }),
       },
       order: {
-        updatedAt: sort === 'desc' ? 'DESC' : 'ASC',
+        updatedAt: sort === 'asc' ? 'ASC' : 'DESC', //默认降序
       },
       skip: page * pageSize,
       take: pageSize,
@@ -129,7 +129,7 @@ export class OrderService {
   async orderStatistics() {
     const [orders, total] = await this.orderRepository.findAndCount();
     const totalAmount = orders.reduce((acc, order) => acc + order.amount, 0);
-    return { totalAmount, total };
+    return { totalAmount: parseFloat(totalAmount.toFixed(5)), total };
   }
 
   //通过订单流水号删除

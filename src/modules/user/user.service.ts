@@ -123,7 +123,7 @@ export class UserService {
         ...(!!status && { status }),
       },
       order: {
-        updatedAt: sort === 'desc' ? 'DESC' : 'ASC',
+        updatedAt: sort === 'asc' ? 'ASC' : 'DESC', //默认降序
       },
       skip: page * pageSize,
       take: pageSize,
