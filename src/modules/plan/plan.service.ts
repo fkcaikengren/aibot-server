@@ -11,6 +11,7 @@ export class PlanService {
   ) {}
 
   findOne(id: string) {
+    if (!id) return null;
     return this.planRepository.findOne({ where: { id } });
   }
 

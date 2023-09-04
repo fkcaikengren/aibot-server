@@ -44,7 +44,7 @@ export class OrderService {
     }
 
     const newOrder = this.orderRepository.create({
-      code: curTime + 'O', // 'O'表示OpenAI公司
+      code: curTime + user.id.slice(0, 4) + 'O', // 'O'表示OpenAI公司
       paymentType: orderInfo.paymentType,
       amount: plan.price,
       status: orderInfo.status,
@@ -117,6 +117,7 @@ export class OrderService {
 
   //通过订单流水号查询
   async findOneByCode(orderCode: string) {
+    if (!orderCode) return null;
     return this.orderRepository.findOne({
       where: {
         code: orderCode,
@@ -124,6 +125,7 @@ export class OrderService {
     });
   }
 
+  //统计
   async orderStatistics() {
     const [orders, total] = await this.orderRepository.findAndCount();
     const totalAmount = orders.reduce((acc, order) => acc + order.amount, 0);

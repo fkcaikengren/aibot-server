@@ -55,7 +55,6 @@ export class AuthService {
     delete authUser.password;
     delete authUser.salt;
     delete authUser.status;
-    delete authUser.role;
     delete authUser.createdAt;
     delete authUser.updatedAt;
     const loginUser = {

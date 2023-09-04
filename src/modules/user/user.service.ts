@@ -85,6 +85,7 @@ export class UserService {
   }
 
   async isEmailExisted(email: string) {
+    if (!email) return null;
     const existUser = await this.userRepository.findOne({
       where: { email },
     });
@@ -131,10 +132,12 @@ export class UserService {
   }
 
   async findOne(id: string) {
+    if (!id) return null;
     return this.userRepository.findOne({ where: { id } });
   }
 
   async findOneByEmail(email: string): Promise<UserDto> {
+    if (!email) return null;
     return this.userRepository
       .createQueryBuilder('user')
       .where('email = :email', { email })
@@ -144,6 +147,7 @@ export class UserService {
   }
 
   async findOneWithBalance(id: string) {
+    if (!id) return null;
     const user = await this.userRepository
       .createQueryBuilder('user')
       .select([

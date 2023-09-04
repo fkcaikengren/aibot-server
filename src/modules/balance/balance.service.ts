@@ -17,12 +17,7 @@ export class BalanceService {
 
   async putOne(balance: BalanceDto): Promise<Balance> {
     const { userId, llmId, amount } = balance;
-    let newBalance = await this.balanceRepository.findOne({
-      where: {
-        userId,
-        llmId,
-      },
-    });
+    let newBalance = await this.findOne(userId, llmId);
     if (newBalance) {
       // 修改
       newBalance = this.balanceRepository.merge(newBalance, {
@@ -50,8 +45,8 @@ export class BalanceService {
     return this.balanceRepository.save(newBalance);
   }
 
-  // 找到一个
   async findOne(userId: string, llmId: string) {
+    if (!userId || !llmId) return null;
     return this.balanceRepository.findOne({
       where: {
         userId,
@@ -62,12 +57,7 @@ export class BalanceService {
 
   // 修改used
   async updateUsed(userId: string, modelId: string, consumed: number) {
-    let newBalance = await this.balanceRepository.findOne({
-      where: {
-        userId,
-        llmId: modelId,
-      },
-    });
+    let newBalance = await this.findOne(userId, modelId);
     if (!newBalance) {
       return null;
       // throw new HttpException('balance not exist', HttpStatus.BAD_REQUEST);

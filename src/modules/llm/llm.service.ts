@@ -144,6 +144,7 @@ export class LLMService {
 
   // 找到模型和对应用户的balance
   async findBalance(userId: string, llmName: string) {
+    if (!userId || !llmName) return null;
     return this.llmRepository
       .createQueryBuilder('llm')
       .select(['llm.id', 'llm.name'])
