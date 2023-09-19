@@ -31,6 +31,7 @@ export class LLMService {
     private readonly configService: ConfigService,
   ) {}
 
+  // 记录tokens的chat
   getChatGPTCompletion(
     params: ChatGPTDto,
     userId: string,
@@ -138,6 +139,74 @@ export class LLMService {
         })
         .catch((err) => {
           subscriber.error(err);
+        });
+    });
+  }
+
+  // 应用接口（不记录tokens的chat）
+  getAppChatGPTCompletion(
+    messagesInChat: Pick<ChatGPTDto, 'messages'>,
+  ): Observable<SimpleMessageEvent> {
+    const { messages } = messagesInChat;
+    return new Observable((subscriber) => {
+      const httpAgentHost = this.configService.get('HTTP_PROXY_AGENT');
+      const httpsAgentHost = this.configService.get('HTTPS_PROXY_AGENT');
+
+      this.openai
+        .createChatCompletion(
+          {
+            model: 'gpt-3.5-turbo',
+            messages,
+            max_tokens: 2000,
+            temperature: 0.6,
+            stream: true,
+          },
+          {
+            ...(httpAgentHost
+              ? { httpAgent: new HttpsProxyAgent(httpAgentHost) }
+              : {}),
+            ...(httpsAgentHost
+              ? { httpsAgent: new HttpsProxyAgent(httpsAgentHost) }
+              : {}),
+            responseType: 'stream',
+          },
+        )
+        .then((res) => {
+          // @ts-ignore
+          res.data.on('data', (data) => {
+            // data是二进制数据
+            // console.log(data.toString());
+            const lines = data
+              .toString()
+              .split('\n')
+              .filter((line) => line.trim() !== '');
+            for (const line of lines) {
+              const message = line.replace(/^data: /, '');
+
+              if (message === '[DONE]') {
+                // 流结束
+                subscriber.complete();
+                return;
+              }
+              try {
+                const parsed = JSON.parse(message);
+                const content = parsed.choices[0].delta.content;
+                subscriber.next({ data: content });
+              } catch (err) {
+                console.log(err);
+              }
+            }
+          });
+        })
+        .catch((error) => {
+          if (error.response) {
+            console.log(error.response.status);
+            console.log(error.response.data);
+          } else {
+            console.log(error.message);
+          }
+          console.log('error ocurrs in llm --------');
+          subscriber.error(error);
         });
     });
   }

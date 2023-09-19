@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Request, Sse } from '@nestjs/common';
 import { LLMService } from './llm.service';
 import { ChatGPTDto } from 'src/dto/entities.dto';
+import { NotCheckToken } from 'src/decorators/not-check-token.decorator';
 
 @Controller('llms')
 export class LLMController {
@@ -13,8 +14,15 @@ export class LLMController {
 
   @Post('chat')
   @Sse()
-  complete(@Body() chat: ChatGPTDto, @Request() req: any) {
+  complete(@Body() chatParams: ChatGPTDto, @Request() req: any) {
     const { id } = req.user;
-    return this.llmService.getChatGPTCompletion(chat, id);
+    return this.llmService.getChatGPTCompletion(chatParams, id);
+  }
+
+  @NotCheckToken()
+  @Post('app_language_chat')
+  @Sse()
+  languageChat(@Body() messagesInChat: Pick<ChatGPTDto, 'messages'>) {
+    return this.llmService.getAppChatGPTCompletion(messagesInChat);
   }
 }
