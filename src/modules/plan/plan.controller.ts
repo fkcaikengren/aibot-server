@@ -16,6 +16,9 @@ export class PlanController {
     const plans = await this.planService.findAll();
     if (user.new) return plans;
 
-    return plans.filter((plan) => !plan.onlyNew);
+    /* ChatGPT3.5免费计划 */
+    return plans
+      .filter((plan) => plan.llm.name !== 'gpt-3.5-turbo')
+      .filter((plan) => !plan.onlyNew);
   }
 }
