@@ -91,7 +91,7 @@ export class AuthService {
     const code = randomString(6, '0123456789');
     //发送邮件
     const mail = {
-      from: `"踩坑人AI"<caikengren_ai@163.com>`, // 发件人
+      from: `"爱永恒"<caikengren_ai@163.com>`, // 发件人
       subject: '验证码', //邮箱主题
       to: emailAddr, //收件人
       // 邮件内容，用html格式编写
