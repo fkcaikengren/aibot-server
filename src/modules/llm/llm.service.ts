@@ -4,10 +4,10 @@ import {
   Injectable,
   MessageEvent,
 } from '@nestjs/common';
-import { Configuration, OpenAIApi } from 'openai';
+import OpenAI from 'openai';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ChatGPTDto } from 'src/dto/entities.dto';
-import { Observable } from 'rxjs';
+import { Observable, Subscriber } from 'rxjs';
 import { LLM } from './llm.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,10 +19,23 @@ type SimpleMessageEvent = string | MessageEvent;
 
 @Injectable()
 export class LLMService {
-  private readonly configuration = new Configuration({
+  /*
+ 
+  {
+    ...(httpAgentHost
+      ? { httpAgent: new HttpsProxyAgent(httpAgentHost) }
+      : {}),
+    ...(httpsAgentHost
+      ? { httpsAgent: new HttpsProxyAgent(httpsAgentHost) }
+      : {}),
+    responseType: 'stream',
+  },
+*/
+  httpAgentHost = this.configService.get('HTTP_PROXY_AGENT');
+  private readonly openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    httpAgent: new HttpsProxyAgent(this.httpAgentHost),
   });
-  private readonly openai = new OpenAIApi(this.configuration);
 
   constructor(
     @InjectRepository(LLM)
@@ -30,6 +43,49 @@ export class LLMService {
     private readonly balanceService: BalanceService,
     private readonly configService: ConfigService,
   ) {}
+
+  private async chatCompletionWithObervable(
+    { model, messages, maxTokens, temperature }: ChatGPTDto,
+    {
+      subscriber,
+      completeCb,
+    }: {
+      subscriber: Subscriber<SimpleMessageEvent>;
+      completeCb?: (result: string) => void;
+    },
+  ) {
+    let resContent = completeCb ? '' : null;
+    try {
+      const res = await this.openai.chat.completions.create({
+        model,
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+        stream: true,
+      });
+      for await (const chunk of res) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        subscriber.next({ data: content });
+        if (typeof resContent === 'string') {
+          resContent += content;
+        }
+      }
+
+      subscriber.complete();
+      if (typeof completeCb === 'function') {
+        completeCb(resContent);
+      }
+    } catch (error) {
+      if (error.response) {
+        console.log(error.response.status);
+        console.log(error.response.data);
+      } else {
+        console.log(error.message);
+      }
+      console.log('error ocurrs in llm --------');
+      subscriber.error(error);
+    }
+  }
 
   // 记录tokens的chat
   getChatGPTCompletion(
@@ -41,66 +97,15 @@ export class LLMService {
     return new Observable((subscriber) => {
       /* ChatGPT3.5免费集合 stat */
       if (model === 'gpt-3.5-turbo') {
-        const httpAgentHost = this.configService.get('HTTP_PROXY_AGENT');
-        const httpsAgentHost = this.configService.get('HTTPS_PROXY_AGENT');
-        this.openai
-          .createChatCompletion(
-            {
-              model,
-              messages,
-              max_tokens: maxTokens,
-              temperature,
-              stream: true,
-            },
-            {
-              ...(httpAgentHost
-                ? { httpAgent: new HttpsProxyAgent(httpAgentHost) }
-                : {}),
-              ...(httpsAgentHost
-                ? { httpsAgent: new HttpsProxyAgent(httpsAgentHost) }
-                : {}),
-              responseType: 'stream',
-            },
-          )
-          .then((res) => {
-            // @ts-ignore
-            res.data.on('data', (data) => {
-              // data是二进制数据
-              // console.log(data.toString());
-              const lines = data
-                .toString()
-                .split('\n')
-                .filter((line) => line.trim() !== '');
-              for (const line of lines) {
-                const message = line.replace(/^data: /, '');
-
-                if (message === '[DONE]') {
-                  // 流结束
-                  subscriber.complete();
-                  return;
-                }
-                try {
-                  const parsed = JSON.parse(message);
-                  const content = parsed.choices[0].delta.content;
-
-                  subscriber.next({ data: content });
-                } catch (err) {
-                  console.log(err);
-                }
-              }
-            });
-          })
-          .catch((error) => {
-            if (error.response) {
-              console.log(error.response.status);
-              console.log(error.response.data);
-            } else {
-              console.log(error.message);
-            }
-            console.log('error ocurrs in llm --------');
-            subscriber.error(error);
-          });
-
+        this.chatCompletionWithObervable(
+          {
+            model,
+            messages,
+            maxTokens,
+            temperature,
+          },
+          { subscriber },
+        );
         return;
       }
       /* end */
@@ -132,76 +137,25 @@ export class LLMService {
             (acc, msg) => acc + msg.content,
             '',
           );
-          const httpAgentHost = this.configService.get('HTTP_PROXY_AGENT');
-          const httpsAgentHost = this.configService.get('HTTPS_PROXY_AGENT');
-          this.openai
-            .createChatCompletion(
-              {
-                model,
-                messages,
-                max_tokens: maxTokens,
-                temperature,
-                stream: true,
+          this.chatCompletionWithObervable(
+            {
+              model,
+              messages,
+              maxTokens,
+              temperature,
+            },
+            {
+              subscriber,
+              completeCb: (resContent) => {
+                // 修改消耗的tokens
+                const completeTokens =
+                  calcTokens(resContent) + calcTokens(reqContent, 0.9);
+                // console.log('completeTokens--------: ', completeTokens);
+                // 更新数据库中的used
+                this.balanceService.updateUsed(userId, modelId, completeTokens);
               },
-              {
-                ...(httpAgentHost
-                  ? { httpAgent: new HttpsProxyAgent(httpAgentHost) }
-                  : {}),
-                ...(httpsAgentHost
-                  ? { httpsAgent: new HttpsProxyAgent(httpsAgentHost) }
-                  : {}),
-                responseType: 'stream',
-              },
-            )
-            .then((res) => {
-              let resContent = '';
-              // @ts-ignore
-              res.data.on('data', (data) => {
-                // data是二进制数据
-                // console.log(data.toString());
-                const lines = data
-                  .toString()
-                  .split('\n')
-                  .filter((line) => line.trim() !== '');
-                for (const line of lines) {
-                  const message = line.replace(/^data: /, '');
-
-                  if (message === '[DONE]') {
-                    // 流结束
-                    subscriber.complete();
-                    // 修改消耗的tokens
-                    const completeTokens =
-                      calcTokens(resContent) + calcTokens(reqContent, 0.9);
-                    // console.log('completeTokens--------: ', completeTokens);
-                    // 更新数据库中的used
-                    this.balanceService.updateUsed(
-                      userId,
-                      modelId,
-                      completeTokens,
-                    );
-                    return;
-                  }
-                  try {
-                    const parsed = JSON.parse(message);
-                    const content = parsed.choices[0].delta.content;
-                    resContent += content;
-                    subscriber.next({ data: content });
-                  } catch (err) {
-                    console.log(err);
-                  }
-                }
-              });
-            })
-            .catch((error) => {
-              if (error.response) {
-                console.log(error.response.status);
-                console.log(error.response.data);
-              } else {
-                console.log(error.message);
-              }
-              console.log('error ocurrs in llm --------');
-              subscriber.error(error);
-            });
+            },
+          );
         })
         .catch((err) => {
           subscriber.error(err);
@@ -215,65 +169,17 @@ export class LLMService {
   ): Observable<SimpleMessageEvent> {
     const { messages } = messagesInChat;
     return new Observable((subscriber) => {
-      const httpAgentHost = this.configService.get('HTTP_PROXY_AGENT');
-      const httpsAgentHost = this.configService.get('HTTPS_PROXY_AGENT');
-
-      this.openai
-        .createChatCompletion(
-          {
-            model: 'gpt-3.5-turbo',
-            messages,
-            max_tokens: 2000,
-            temperature: 0.6,
-            stream: true,
-          },
-          {
-            ...(httpAgentHost
-              ? { httpAgent: new HttpsProxyAgent(httpAgentHost) }
-              : {}),
-            ...(httpsAgentHost
-              ? { httpsAgent: new HttpsProxyAgent(httpsAgentHost) }
-              : {}),
-            responseType: 'stream',
-          },
-        )
-        .then((res) => {
-          // @ts-ignore
-          res.data.on('data', (data) => {
-            // data是二进制数据
-            // console.log(data.toString());
-            const lines = data
-              .toString()
-              .split('\n')
-              .filter((line) => line.trim() !== '');
-            for (const line of lines) {
-              const message = line.replace(/^data: /, '');
-
-              if (message === '[DONE]') {
-                // 流结束
-                subscriber.complete();
-                return;
-              }
-              try {
-                const parsed = JSON.parse(message);
-                const content = parsed.choices[0].delta.content;
-                subscriber.next({ data: content });
-              } catch (err) {
-                console.log(err);
-              }
-            }
-          });
-        })
-        .catch((error) => {
-          if (error.response) {
-            console.log(error.response.status);
-            console.log(error.response.data);
-          } else {
-            console.log(error.message);
-          }
-          console.log('error ocurrs in llm --------');
-          subscriber.error(error);
-        });
+      this.chatCompletionWithObervable(
+        {
+          model: 'gpt-3.5-turbo',
+          messages,
+          maxTokens: 2000,
+          temperature: 0.6,
+        },
+        {
+          subscriber,
+        },
+      );
     });
   }
 

@@ -1,4 +1,4 @@
-import { ChatCompletionRequestMessage } from 'openai';
+import OpenAI from 'openai';
 import { User } from './../modules/user/user.entity';
 import { Order } from 'src/modules/order/order.entity';
 import { Plan } from 'src/modules/plan/plan.entity';
@@ -19,7 +19,7 @@ export interface EmailLoginUserDto {
 export interface ChatGPTDto {
   // modelId: string;
   model: 'gpt-3.5-turbo' | 'gpt-4';
-  messages: ChatCompletionRequestMessage[];
+  messages: OpenAI.Chat.ChatCompletionMessage[];
   maxTokens: number;
   temperature: number;
 }
