@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   BeforeInsert,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { encryptPassword, makeSalt } from 'src/utils/crypto.util';
 import { Balance } from '../balance/balance.entity';
@@ -58,6 +59,13 @@ export class User {
   // 封锁账号
   @Column('simple-enum', { enum: ['active', 'locked'], default: 'active' })
   status: string;
+
+  @Column({
+    type: 'char',
+    length: 16,
+  })
+  @Index({ unique: true })
+  inviteCode: string;
 
   @OneToMany(() => Balance, (balance) => balance.user)
   balances: Balance[];

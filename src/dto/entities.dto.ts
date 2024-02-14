@@ -3,6 +3,11 @@ import { User } from './../modules/user/user.entity';
 import { Order } from 'src/modules/order/order.entity';
 import { Plan } from 'src/modules/plan/plan.entity';
 
+export type LLModelType =
+  | 'gpt-3.5-turbo'
+  | 'gpt-4-0125-preview'
+  | 'moonshot-v1-8k';
+
 export interface EmailRegisterUserDto {
   nickname: string;
   email: string;
@@ -18,7 +23,7 @@ export interface EmailLoginUserDto {
 
 export interface ChatGPTDto {
   // modelId: string;
-  model: 'gpt-3.5-turbo' | 'gpt-4';
+  model: LLModelType;
   messages: OpenAI.Chat.ChatCompletionMessage[];
   maxTokens: number;
   temperature: number;

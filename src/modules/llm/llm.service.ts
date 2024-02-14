@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import OpenAI from 'openai';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import { ChatGPTDto } from 'src/dto/entities.dto';
+import { ChatGPTDto, LLModelType } from 'src/dto/entities.dto';
 import { Observable, Subscriber } from 'rxjs';
 import { LLM } from './llm.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -37,12 +37,28 @@ export class LLMService {
     httpAgent: new HttpsProxyAgent(this.httpAgentHost),
   });
 
+  private readonly moonshotClient = new OpenAI({
+    apiKey: process.env.MOONSHOT_API_KEY,
+    baseURL: 'https://api.moonshot.cn/v1',
+  });
+
   constructor(
     @InjectRepository(LLM)
     private readonly llmRepository: Repository<LLM>,
     private readonly balanceService: BalanceService,
     private readonly configService: ConfigService,
   ) {}
+
+  private getClientByModel(model: LLModelType) {
+    switch (model) {
+      case 'gpt-3.5-turbo':
+        return this.openai;
+      case 'gpt-4-0125-preview':
+        return this.openai;
+      case 'moonshot-v1-8k':
+        return this.moonshotClient;
+    }
+  }
 
   private async chatCompletionWithObervable(
     { model, messages, maxTokens, temperature }: ChatGPTDto,
@@ -56,7 +72,8 @@ export class LLMService {
   ) {
     let resContent = completeCb ? '' : null;
     try {
-      const res = await this.openai.chat.completions.create({
+      const client = this.getClientByModel(model);
+      const res = await client.chat.completions.create({
         model,
         messages,
         max_tokens: maxTokens,
@@ -95,8 +112,19 @@ export class LLMService {
     const { model, messages, maxTokens, temperature } = params;
     const atLeast = 500;
     return new Observable((subscriber) => {
-      /* ChatGPT3.5免费集合 stat */
+      /* ChatGPT3.5/Moonshot 免费 start */
       if (model === 'gpt-3.5-turbo') {
+        this.chatCompletionWithObervable(
+          {
+            model,
+            messages,
+            maxTokens,
+            temperature,
+          },
+          { subscriber },
+        );
+        return;
+      } else if (model === 'moonshot-v1-8k') {
         this.chatCompletionWithObervable(
           {
             model,

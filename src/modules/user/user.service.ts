@@ -25,7 +25,8 @@ export class UserService {
 
   async register(user: EmailRegisterUserDto) {
     const { email, password, emailCode, inviteCode } = user;
-    const nickname = randomString(8);
+    const nickname = 'ai_' + randomString(8);
+    const myInviteCode = randomString(8); //TODO: 当用户多时，需要判断邀请码是否唯一
     // 验证参数
     if (!EMAIL_REGEX.test(email)) {
       throw new HttpException('邮箱不正确', HttpStatus.UNPROCESSABLE_ENTITY);
@@ -56,16 +57,25 @@ export class UserService {
       throw new HttpException('邮箱已被注册', HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
+    // 邀请者
+    let invitor = null;
+
     // 计算初始token数量
-    let ownTokens = 10000; //起步1w
-    if (inviteCode === 'AjpcdqfE') {
-      ownTokens += 20000;
-    } else if (inviteCode === 'BwvilqfZ') {
-      ownTokens += 30000;
+    let ownTokens = 2000; //默认2k
+    if (inviteCode) {
+      invitor = await this.findOneByInviteCode(inviteCode);
+      if (invitor) {
+        //邀请码存在并合法
+        ownTokens += 3000;
+      }
     }
 
     // 创建用户
-    const newUser = this.userRepository.create({ ...user, nickname });
+    const newUser = this.userRepository.create({
+      ...user,
+      nickname,
+      inviteCode: myInviteCode,
+    });
     // 创建balance
     try {
       await this.userRepository.save(newUser);
@@ -74,9 +84,18 @@ export class UserService {
         await this.balanceService.putOne({
           userId: newUser.id,
           llmId: model.id,
-          amount: model.name === 'gpt-3.5-turbo' ? ownTokens : 0,
+          amount: model.name.startsWith('gpt-4') ? ownTokens : 0,
         });
       });
+      const gpt4Model = allModels.find((m) => m.name.startsWith('gpt-4'));
+      // 给邀请者加 token
+      if (invitor) {
+        await this.balanceService.putOne({
+          userId: invitor.id,
+          llmId: gpt4Model.id,
+          amount: 3000,
+        });
+      }
     } catch (error) {
       console.log(error);
     }
@@ -146,6 +165,14 @@ export class UserService {
       .getOne();
   }
 
+  async findOneByInviteCode(inviteCode: string) {
+    if (!inviteCode) return null;
+    return this.userRepository
+      .createQueryBuilder('user')
+      .where('inviteCode = :inviteCode', { inviteCode })
+      .getOne();
+  }
+
   async findOneWithBalance(id: string) {
     if (!id) return null;
     const user = await this.userRepository
@@ -156,6 +183,7 @@ export class UserService {
         'user.email',
         'user.phone',
         'user.avatar',
+        'user.inviteCode',
       ])
       .leftJoinAndSelect('user.balances', 'balance')
       .leftJoinAndSelect('balance.llm', 'llm')

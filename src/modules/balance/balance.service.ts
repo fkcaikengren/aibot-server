@@ -21,8 +21,8 @@ export class BalanceService {
     if (newBalance) {
       // 修改
       newBalance = this.balanceRepository.merge(newBalance, {
-        total: amount + (newBalance.total - newBalance.used),
-        used: 0,
+        total: amount + newBalance.total, // amount + (newBalance.total - newBalance.used),
+        //used: 0,
       });
     } else {
       // 创建
