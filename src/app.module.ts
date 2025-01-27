@@ -66,7 +66,7 @@ function getEnvFilePath() {
       store: async () =>
         await redisStore({
           socket: {
-            host: process.env.REDIS_HOST || 'aibot-network',
+            host: process.env.REDIS_HOST || 'localhost',
             port: parseInt(process.env.REDIS_PORT) || 6379,
           },
           password: process.env.REDIS_PASSWORD,
