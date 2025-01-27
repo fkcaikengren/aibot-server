@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  aibot-nest:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    depends_on:
+      - aibot-mysql
+      - aibot-redis
+    ports:
+      - 3001:3001
+    networks:
+      - aibot-network
+
+  aibot-mysql:
+    image: mysql:8.4.3
+    volumes:
+      - /home/tsw/webapp/volumes/aibot/mysql/data:/var/lib/mysql
+      - /home/tsw/webapp/volumes/aibot/mysql/conf/my.cnf:/etc/my.cnf
+      - /home/tsw/webapp/volumes/aibot/mysql/log:/var/log/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD=mysql_qaqxxxl4
+      MYSQL_TMP_TABLE_SIZE=64M
+      MYSQL_INNODB_BUFFER_POOL_SIZE=128M
+      PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      MYSQL_MAJOR=8.4
+      MYSQL_VERSION=8.4.3-1.el9
+      MYSQL_SHELL_VERSION=8.4.3-1.el9
+    networks:
+      - aibot-network
+
+  aibot-redis:
+    image: redis
+    volumes:
+      - /home/tsw/webapp/volumes/aibot/redis/data:/data
+      - /home/tsw/webapp/volumes/aibot/redis/conf/redis.conf:/etc/redis/redis.conf
+      - /home/tsw/webapp/volumes/aibot/redis/logs:/logs
+    environment:
+      PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      REDIS_VERSION=7.4.2
+    command: ["redis-server", "--requirepass", "redis_3JJxytz"]
+    networks:
+      - aibot-network
+
+networks:
+  aibot-network:
+    driver: bridge
