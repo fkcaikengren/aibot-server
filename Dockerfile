@@ -1,5 +1,5 @@
 # 1.Build stage
-FROM 18.20-alpine AS build-stage
+FROM node:18.20.6-alpine3.21 AS build-stage
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY . .
 RUN yarn run build
 
 # 2.production stage
-FROM 18.20-alpine AS production-stage
+FROM node:18.20.6-alpine3.21 AS production-stage
 
 COPY --from=build-stage /app/dist /app
 COPY --from=build-stage /app/package.json /app/package.json
