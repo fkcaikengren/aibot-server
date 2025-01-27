@@ -1,17 +1,22 @@
-FROM node:18.0-alpine3.14 as build-stage
+# 1.Build stage
+FROM 18.20.6-alpine3.21 AS build-stage
 
 WORKDIR /app
 
-COPY package.json .
+# Copy package.json and yarn.lock separately to leverage Docker cache
+COPY package.json yarn.lock .
 
+# Install dependencies (node镜像自带yarn)
 RUN yarn install
 
+# Copy the rest of the application code
 COPY . .
 
-RUN npm run build
+# Build the application
+RUN yarn run build
 
-# production stage
-FROM node:18.0-alpine3.14 as production-stage
+# 2.production stage
+FROM 18.20.6-alpine3.21 AS production-stage
 
 COPY --from=build-stage /app/dist /app
 COPY --from=build-stage /app/package.json /app/package.json
