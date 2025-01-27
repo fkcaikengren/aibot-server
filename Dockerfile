@@ -27,4 +27,4 @@ RUN yarn install --production
 
 EXPOSE 3001
 
-CMD ["node", "/app/main.js"]
+CMD ["yarn", "start:prod"]
