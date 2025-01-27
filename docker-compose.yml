@@ -5,18 +5,18 @@ services:
       context: ./
       dockerfile: ./Dockerfile
     depends_on:
-      - aibot-mysql
-      - aibot-redis
+      - mysql
+      - redis
     ports:
       - 3001:3001
     networks:
       - aibot-network
 
-  aibot-mysql:
+  mysql:
     image: mysql:8.4.3
     volumes:
       - /home/tsw/webapp/volumes/aibot/mysql/data:/var/lib/mysql
-      - /home/tsw/webapp/volumes/aibot/mysql/conf/my.cnf:/etc/my.cnf
+      # - /home/tsw/webapp/volumes/aibot/mysql/conf/my.cnf:/etc/my.cnf #要求提前创建好my.cnf文件（不是文件夹）
       - /home/tsw/webapp/volumes/aibot/mysql/log:/var/log/mysql
     environment:
       MYSQL_ROOT_PASSWORD: mysql_qaqxxxl4
@@ -29,7 +29,7 @@ services:
     networks:
       - aibot-network
 
-  aibot-redis:
+  redis:
     image: redis
     volumes:
       - /home/tsw/webapp/volumes/aibot/redis/data:/data
