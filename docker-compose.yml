@@ -38,7 +38,7 @@ services:
     environment:
       PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       REDIS_VERSION: 7.4.2
-    command: ["redis-server", "--requirepass", "redis_3JJxytz"]
+    # command: ["redis-server", "--requirepass", "redis_3JJxytz"]
     networks:
       - aibot-network
 
