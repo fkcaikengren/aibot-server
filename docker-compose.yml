@@ -14,8 +14,8 @@ services:
 
   frontend:
     image: aibot-next  # 本地构建的前端镜像
-    ports:
-      - 3000:3000 
+    # ports:
+    #   - 3000:3000 
     networks:
       - aibot-network 
 
