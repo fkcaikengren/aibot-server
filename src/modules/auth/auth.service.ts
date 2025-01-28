@@ -64,11 +64,20 @@ export class AuthService {
         expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN'),
       }),
     };
-    //保存到redis
-    // @ts-ignore (cache-manager-redis-store 期望ttl传入一个obj)
-    await this.cacheManager.set(`uid:${payload.uid}`, token, {
-      ttl: this.configService.get('AUTH_MAX_AGE'),
-    });
+
+    try {
+      //保存到redis
+      // @ts-ignore (cache-manager-redis-store 期望ttl传入一个obj)
+      await this.cacheManager.set(`uid:${payload.uid}`, token, {
+        ttl: this.configService.get('AUTH_MAX_AGE'),
+      });
+    } catch (error) {
+      console.log(error);
+      throw new HttpException(
+        'redis缓存出问题了',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
 
     return loginUser;
   }

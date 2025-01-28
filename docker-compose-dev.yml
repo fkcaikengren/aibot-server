@@ -7,28 +7,26 @@ services:
     depends_on:
       - mysql
       - redis
-    # ports:
-    #   - 3001:3001
+    ports:
+      - 3001:3001
     networks:
       - aibot-network
 
   frontend:
-    image: aibot-next  # 本地构建的前端镜像
-    ports:
-      - 3000:3000 
-    networks:
-      - aibot-network 
-
+      image: aibot-next  # 本地构建的前端镜像
+      ports:
+        - 3000:3000 
+      networks:
+        - aibot-network 
   mysql:
     image: mysql:8.4.3
+    ports:
+        - 3306:3306 
     volumes:
-      - /home/tsw/webapp/volumes/aibot/mysql/data:/var/lib/mysql
-      # - /home/tsw/webapp/volumes/aibot/mysql/conf/my.cnf:/etc/my.cnf #要求提前创建好my.cnf文件（不是文件夹）
-      - /home/tsw/webapp/volumes/aibot/mysql/log:/var/log/mysql
+      - ~/mysql/mysqlbak:/home/mysql
     environment:
       MYSQL_ROOT_PASSWORD: mysql_qaqxxxl4
       MYSQL_DATABASE: aibot
-      #优化
       MYSQL_TMP_TABLE_SIZE: 64M
       MYSQL_INNODB_BUFFER_POOL_SIZE: 128M
       PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -40,16 +38,13 @@ services:
 
   redis:
     image: redis:7
-    volumes:
-      - /home/tsw/webapp/volumes/aibot/redis/data:/data
-      - /home/tsw/webapp/volumes/aibot/redis/conf:/etc/redis # 可手动在该目录下创建redis.conf
-      - /home/tsw/webapp/volumes/aibot/redis/logs:/logs
+    ports:
+      - 6379:6379 
+    # volumes:
     environment:
       PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-    # command: ["redis-server", "--requirepass", "redis_3JJxytz"] #建议在redis.conf中配置密码
     networks:
       - aibot-network
-
 
   nginx:
     image: nginx:stable-alpine # 指定服务镜像
@@ -57,16 +52,16 @@ services:
     restart: always # 重启方式
     ports: # 映射端口
       - 8000:80
-      - 8443:443
     volumes: # 挂载数据卷
-      - /home/tsw/webapp/volumes/aibot/nginx/conf.d:/etc/nginx/conf.d
-      - /home/tsw/webapp/volumes/aibot/nginx/logs:/var/log/nginx
-      - /home/tsw/webapp/volumes/aibot/nginx/cert:/etc/nginx/cert
+      - ~/www/aibot/nginx/conf.d:/etc/nginx/conf.d
+      - ~/www/aibot/nginx/logs:/var/log/nginx
+      - ~/www/aibot/nginx/cert:/etc/nginx/cert
     depends_on: # 启动顺序
       - nest-app
       - frontend
     networks:
       - aibot-network
+    
 
 networks:
   aibot-network:

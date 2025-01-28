@@ -35,7 +35,6 @@ function getEnvFilePath() {
 
   return envFilePath;
 }
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: getEnvFilePath() }),
@@ -63,14 +62,15 @@ function getEnvFilePath() {
       isGlobal: true,
       // https://github.com/dabroek/node-cache-manager-redis-store/issues/40
       // @ts-ignore
-      store: async () =>
-        await redisStore({
+      store: async () => {
+        return await redisStore({
           socket: {
             host: process.env.REDIS_HOST || 'localhost',
             port: parseInt(process.env.REDIS_PORT) || 6379,
           },
           // password: process.env.REDIS_PASSWORD,
-        }),
+        });
+      },
     }),
     JwtModule.register({
       global: true,
